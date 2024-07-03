@@ -1,5 +1,3 @@
-import json
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
@@ -9,12 +7,9 @@ from config import total_points
 
 app = FastAPI()
 
-# Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Define CORS settings
 origins = [
-    "*",
+  "*"
 ]
 
 # Add CORS middleware
@@ -49,13 +44,14 @@ async def security_headers_middleware(request, call_next):
 async def update_points(data: DonationData):
     try:
         updated_points = calculate_points(data.itemImgUrl, data.itemNum)
-        for websocket in global_websockets:
+        _global_websockets=global_websockets
+        for websocket in _global_websockets:
             try:
                 # await websocket.send_text(json.dumps({"total_points": updated_points}))
                 await websocket.send_text(json.dumps({"total_points": updated_points, "userName": data.userName, "itemNum": data.itemNum}))
             except Exception as e:
-                global_websockets.remove(websocket)
-                await websocket.close()
+                if websocket in global_websockets:
+                    global_websockets.remove(websocket)
         return {"total_points": updated_points}
     except HTTPException as e:
         raise e
@@ -68,8 +64,9 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             await websocket.receive_text()
     except Exception as e:
-        global_websockets.remove(websocket)
-        await websocket.close()
+        if websocket in global_websockets:
+            global_websockets.remove(websocket)
+            #await websocket.close()
 
 # エンドポイントで現在のポイントを取得する機能（オプション）
 @app.get("/current_points")
@@ -77,5 +74,4 @@ def current_points():
     return {"total_points": total_points}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
