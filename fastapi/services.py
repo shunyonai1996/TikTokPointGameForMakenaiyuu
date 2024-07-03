@@ -15,10 +15,11 @@ def save_points(points: int):
 
 # 新しいアイテムURLを保存する関数
 def save_new_item(url: str):
+    # 新しいアイテムの投げ銭があった場合、新規にitem_points.jsonに書き込む
     if url not in item_points:
-        item_points[url] = 50  # 新しいアイテムのデフォルトポイント
+        item_points[url] = 50
         with open(ITEM_POINTS_FILE_PATH, 'w') as f:
-            json.dump(item_points, f)
+            json.dump(item_points, f, indent=4)
 
 # ポイントの計算処理を行う関数
 def calculate_points(itemImgUrl: str, itemNum: int) -> int:

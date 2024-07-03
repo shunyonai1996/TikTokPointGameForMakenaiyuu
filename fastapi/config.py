@@ -1,6 +1,5 @@
 import json
 
-# JSONファイルパスの設定
 POINTS_FILE_PATH = "data/points.json"
 ITEM_POINTS_FILE_PATH = "data/item_points.json"
 
