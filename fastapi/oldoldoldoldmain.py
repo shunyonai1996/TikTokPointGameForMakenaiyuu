@@ -22,7 +22,7 @@ app.add_middleware(
 # Create a Pydantic model for request body validation
 class Item(BaseModel):
     username: str
-    itemImgUrl: str = None
+    itemCode: str = None
     itemNum: int
 
 # Middleware to add Content-Security-Policy header

@@ -1,6 +1,6 @@
 import json
 
-POINTS_FILE_PATH = "data/points.json"
+CURRENT_POINTS_FILE_PATH = "data/current_points.json"
 ITEM_POINTS_FILE_PATH = "data/item_points.json"
 
 # 初期ポイントの設定
@@ -15,9 +15,9 @@ except (FileNotFoundError, json.JSONDecodeError):
 
 # JSONファイルに初期ポイントを保存する（初回のみ実行）
 try:
-    with open(POINTS_FILE_PATH, 'r') as f:
-        total_points = json.load(f)['total_points']
+    with open(CURRENT_POINTS_FILE_PATH, 'r') as f:
+        current_points = json.load(f)['current_points']
 except (FileNotFoundError, json.JSONDecodeError):
-    with open(POINTS_FILE_PATH, 'w') as f:
-        json.dump({'total_points': initial_points}, f)
-    total_points = initial_points
+    with open(CURRENT_POINTS_FILE_PATH, 'w') as f:
+        json.dump({'current_points': initial_points}, f)
+    current_points = initial_points

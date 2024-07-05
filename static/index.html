@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Total Points Monitor</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6D5BBA, #8D58BF);
+            font-family: 'Arial', sans-serif;
+            color: #ffffff;
+            position: relative;
+        }
+        .container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        #current_points {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        }
+        .donation {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            animation: slide-in 1s ease-out;
+        }
+        .donation img {
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+        .donation .details {
+            display: flex;
+            flex-direction: column;
+        }
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .donation-list {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .donation-list .donation {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            color: #FFD700;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Total Points: <span id="current_points">100000</span></h1>
+    </div>
+    <div class="donation-list" id="donation_list"></div>
+
+    <script>
+        const totalPointsElement = document.getElementById("current_points");
+        const donationListElement = document.getElementById("donation_list");
+        const ws = new WebSocket("ws://192.168.1.84:8000/ws");
+
+        let currentPoints = 100000;
+
+        function updatePoints(newPoints) {
+            const increment = newPoints > currentPoints ? 1 : -1;
+            const update = () => {
+                if (currentPoints !== newPoints) {
+                    currentPoints += increment;
+                    totalPointsElement.textContent = currentPoints;
+                    requestAnimationFrame(update);
+                }
+            };
+            update();
+        }
+
+        ws.onopen = function(event) {
+            console.log("WebSocket connection established");
+        };
+
+        ws.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            if (message.current_points !== undefined) {
+                updatePoints(message.current_points);
+            }
+            if (message.userName && message.userImgUrl && message.itemNum) {
+                const donationElement = document.createElement('div');
+                donationElement.className = 'donation';
+                donationElement.innerHTML = `
+                    <img src="${message.userImgUrl}" alt="${message.userName}">
+                    <div class="details">
+                        <strong>${message.userName}</strong>
+                        <span>Item: ${message.itemCode}</span>
+                        <span>Count: ${message.itemNum}</span>
+                    </div>
+                `;
+                donationListElement.append(donationElement); // 新しい要素をリストの末尾に追加
+                const oldDonations = donationListElement.querySelectorAll('.donation');
+                if (oldDonations.length > 10) {
+                    oldDonations[0].remove(); // 最古の要素を削除
+                }
+            }
+        };
+
+        ws.onclose = function(event) {
+            console.log("WebSocket connection closed");
+        };
+
+        ws.onerror = function(event) {
+            console.error("WebSocket error:", event);
+        };
+    </script>
+</body>
+</html>
