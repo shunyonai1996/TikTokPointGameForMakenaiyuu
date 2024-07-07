@@ -1,22 +1,18 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi import FastAPI, HTTPException, WebSocket, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from services import calculate_points
 from config import current_points
 import json
 import uvicorn
+from urllib.parse import urlparse
 
 app = FastAPI()
 
-# 静的ファイル表示
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Define CORS settings
-origins = [
-  "*"
-]
+origins = ["*"]
 
 # Add CORS middleware
 app.add_middleware(
@@ -29,6 +25,9 @@ app.add_middleware(
 
 global_websockets = []
 
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Create a Pydantic model for request body validation
 class DonationData(BaseModel):
     userName: str
@@ -36,25 +35,14 @@ class DonationData(BaseModel):
     itemCode: str
     itemNum: int
 
-# Middleware to add Content-Security-Policy header
-async def add_security_headers(request, call_next):
-    response = await call_next(request)
-    # CSP を設定する
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "img-src 'self' bytedance tiktokcdn.com data:; "
-        "style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline';"
-    )
-    return response
-
-@app.middleware("http")
-async def security_headers_middleware(request, call_next):
-    return await add_security_headers(request, call_next)
-
 @app.post("/update_points")
-async def update_points(data: DonationData):
-    print("received data:", data)
+async def update_points(data: DonationData, request: Request):
+    print("🛜🛜🛜 Req 🛜🛜🛜：", data)
+
+    parsed_url = urlparse(data.userImgUrl) # userImgUrl からドメイン名を抽出
+    img_domain = parsed_url.netloc
+    print("🖊️🖊️🖊️ img_domain 🖊️🖊️🖊️:", img_domain)
+
     try:
         updated_points = calculate_points(data.itemCode, data.itemNum)
         _global_websockets = global_websockets[:]
@@ -70,9 +58,28 @@ async def update_points(data: DonationData):
             except Exception as e:
                 if websocket in global_websockets:
                     global_websockets.remove(websocket)
-        return {"current_points": updated_points}
+
+        # 動的に CSP を設定
+        response = {
+            "current_points": updated_points,
+            "userImgUrl": data.userImgUrl,
+            "userName": data.userName,
+            "itemNum": data.itemNum,
+            "itemCode": data.itemCode
+        }
+
+        headers = {
+            "Content-Security-Policy": (
+                f"default-src 'self'; "
+                f"img-src 'self' bytedance tiktokcdn.com {img_domain} data:; "
+                "style-src 'self' 'unsafe-inline'; "
+                "script-src 'self' 'unsafe-inline';"
+            )
+        }
+
+        return JSONResponse(content=response, headers=headers)
     except HTTPException as e:
-        print("Validation error:", e.json())
+        print("❌❌❌ Validation error ❌❌❌:", e.detail)
         raise e
 
 @app.websocket("/ws")
